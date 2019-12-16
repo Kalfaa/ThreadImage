@@ -56,7 +56,7 @@ void apply_effect(Image* original, Image* new_i) {
 		}
 	}
 }
-
+/*
 int main(int argc, char** argv) {
 
 	Image img = open_bitmap("bmp_tank.bmp");
@@ -64,4 +64,4 @@ int main(int argc, char** argv) {
 	apply_effect(&img, &new_i);
 	save_bitmap(new_i, "test_out.bmp");
 	return 0;
-}
+}*/

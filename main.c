@@ -51,8 +51,9 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
 }
 
 
-void* treatment(ImageToModify image){
-    apply_effect(&image.start, &image.end);
+void* treatment(ImageToModify* image){
+    apply_effect(&image->start, &image->end);
+
 }
 
 int init(ImageToModify** listImage,char* path){
@@ -62,10 +63,18 @@ int init(ImageToModify** listImage,char* path){
     return count ;
 }
 
+void * consumer(){
+
+    
+}
 
 
-
-void consumer(ImageToModify* imageList,int imageNumber,int threadNumber,pthread_t * threadList){
+void start(ImageToModify* imageList, int imageNumber, int threadNumber){
+    pthread_t threadList[threadNumber-1];
+    pthread_t consumer;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     int imageSent=0;
     while(GLOBAL_IMAGE_REMAINING>0){
         for(int i =0;i<threadNumber;i++){
@@ -85,15 +94,7 @@ int main(int argc, char** argv)
     char* path = "/home/theo/CLionProjects/ThreadImage/TestBitmap";
     ImageToModify* listImage;
     int imageNumber = init(&listImage,path);
-    pthread_t ids[8];
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-
-    for(int i = 0, thread_id = 0; i < 8; i+=2) {
-        pthread_join(ids[i], NULL);
-    }
-    consumer(listImage,imageNumber,8,ids);
+    start(listImage, imageNumber, 8);
     return 0;
 }

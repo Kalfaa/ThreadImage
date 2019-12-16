@@ -17,7 +17,7 @@ typedef struct imageToModify {
 
 
 
-void find_images(char* path, ImageToModify** imageList)
+int count_images(char* path)
 {
     int file_count = 0;
     DIR * dirp;
@@ -29,26 +29,38 @@ void find_images(char* path, ImageToModify** imageList)
             file_count++;
         }
     }
-    ImageToModify imageToModify[file_count];
+    return file_count;
+}
+
+void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
+    ImageToModify* temp = malloc(sizeof(ImageToModify) * imageNumber);
+    DIR * dirp;
+    struct dirent * entry;
+    dirp = opendir(path);
+
     int count =0;
     while ((entry = readdir(dirp)) != NULL) {
         if (entry->d_type == DT_REG) {
-            imageToModify[count].start=open_bitmap(entry->d_name);
-            imageToModify[count].name= entry->d_name;
+            temp[count].start=open_bitmap(entry->d_name);
+            temp[count].name= entry->d_name;
             count++;
         }
     }
-
     closedir(dirp);
-    imageList = imageToModify;
-    return ;
+    *imageToModify=temp;
+}
+
+void init(ImageToModify** listImage,char* path){
+    int count = count_images(path);
+    getListImage(path,count,listImage);
 }
 
 int main(int argc, char** argv)
 {
-    ImageToModify** listImage;
-    find_images("/home/theo/CLionProjects/ThreadImage/TestBitmap",listImage);
-    printf("Hello, World!\n");
+    char* path = "/home/theo/CLionProjects/ThreadImage/TestBitmap";
+    ImageToModify* listImage;
+    init(&listImage,path);
+    printf("%s",listImage[0].name);
     return 0;
 }
 

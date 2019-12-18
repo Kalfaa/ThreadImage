@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include "example/edge-detect.c"
 // ARG DIRECTORYNAME THREAD NUMBER
-int* GLOBAL_THREAD_WORKING;
+
 int GLOBAL_IMAGE_REMAINING;
 typedef struct imageToModify {
     Image start;
@@ -15,6 +15,11 @@ typedef struct imageToModify {
     char * name;
 }ImageToModify;
 
+struct ThreadArg{
+    struct ImageToModify* structImageToModify;
+    int imageRemaining;
+    int threadWorking;
+};
 
 
 int count_images(char* path)
@@ -51,9 +56,9 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
 }
 
 
-void* treatment(ImageToModify* image){
-    apply_effect(&image->start, &image->end);
-
+void* treatment(ImageToModify image){
+    printf("ee %s",image.name);
+    //apply_effect(&image->start, &image->end);
 }
 
 int init(ImageToModify** listImage,char* path){
@@ -63,28 +68,44 @@ int init(ImageToModify** listImage,char* path){
     return count ;
 }
 
-void * consumer(){
-
-    
+void arrayToZero(int** array,int size){
+    for(int i = 0; i<size-1;i++){
+        array[i]=0;
+    }
 }
 
+void * consumer(){
+
+}
+
+
+void displayWork(int imageRemaining,int imageNumber){
+    printf("\rProgress ... %d / %d ",imageNumber-imageRemaining,imageNumber);
+    fflush(stdout);
+}
 
 void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     pthread_t threadList[threadNumber-1];
     pthread_t consumer;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    int threadWorking[threadNumber];
+    arrayToZero(&threadWorking,threadNumber);
     int imageSent=0;
-    while(GLOBAL_IMAGE_REMAINING>0){
+    pthread_create(&threadList[0], &attr, treatment, (void *)&imageList[imageSent]);
+    pthread_join(threadList[0],NULL);
+    /*while(GLOBAL_IMAGE_REMAINING>0){
+        usleep(200);
+        //displayWork(GLOBAL_IMAGE_REMAINING,imageNumber);
         for(int i =0;i<threadNumber;i++){
-            if(GLOBAL_THREAD_WORKING[i]==0){
-                pthread_create(&threadList[i], NULL, treatment, &imageList[imageSent]);
+            if(threadWorking[i]==0){
+                pthread_create(&threadList[i], &attr, treatment, &imageList[imageSent]);
+
                 imageSent++;
-                GLOBAL_THREAD_WORKING[i]=1;
+                threadWorking[i]=1;
             }
         }
-    }
+    }*/
 }
 
 
@@ -93,8 +114,9 @@ int main(int argc, char** argv)
 {
     char* path = "/home/theo/CLionProjects/ThreadImage/TestBitmap";
     ImageToModify* listImage;
+    printf("Init...");
     int imageNumber = init(&listImage,path);
-
     start(listImage, imageNumber, 8);
     return 0;
 }
+

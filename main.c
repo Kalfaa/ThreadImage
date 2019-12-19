@@ -13,6 +13,7 @@ typedef struct imageToModify {
     Image start;
     Image end;
     char * name;
+    int i;
 }ImageToModify;
 
 struct ThreadArg{
@@ -48,6 +49,7 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
         if (entry->d_type == DT_REG) {
             temp[count].start=open_bitmap(entry->d_name);
             temp[count].name= entry->d_name;
+            temp[count].i=12;
             count++;
         }
     }
@@ -56,9 +58,10 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
 }
 
 
-void* treatment(ImageToModify image){
-    printf("ee %s",image.name);
-    //apply_effect(&image->start, &image->end);
+void* treatment(void* image){
+    ImageToModify *temp = (ImageToModify*) image;
+    printf("ee %s",temp->name);
+    apply_effect(&temp->start, &temp->end);
 }
 
 int init(ImageToModify** listImage,char* path){
@@ -85,6 +88,7 @@ void displayWork(int imageRemaining,int imageNumber){
 }
 
 void start(ImageToModify* imageList, int imageNumber, int threadNumber){
+    //printf("ee %s",imageList[0].name);
     pthread_t threadList[threadNumber-1];
     pthread_t consumer;
     pthread_attr_t attr;
@@ -92,7 +96,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     int threadWorking[threadNumber];
     arrayToZero(&threadWorking,threadNumber);
     int imageSent=0;
-    pthread_create(&threadList[0], &attr, treatment, (void *)&imageList[imageSent]);
+    pthread_create(&threadList[0], NULL, treatment, (void *)(imageList+imageSent));
     pthread_join(threadList[0],NULL);
     /*while(GLOBAL_IMAGE_REMAINING>0){
         usleep(200);

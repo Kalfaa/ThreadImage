@@ -47,10 +47,17 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
     int count =0;
     while ((entry = readdir(dirp)) != NULL) {
         if (entry->d_type == DT_REG) {
-            temp[count].start=open_bitmap(entry->d_name);
-            temp[count].name= entry->d_name;
+            char* pathImage = malloc(strlen(path)+1+strlen(entry->d_name));
+            strcpy(pathImage, path);
+            strcat(pathImage, "/");
+            strcat(pathImage, entry->d_name);
+            Image testimage = open_bitmap(pathImage);
+            temp[count].start= testimage;
+            temp[count].name= malloc(sizeof(char)*240);
+            strcpy(temp[count].name, entry->d_name);
             temp[count].i=12;
             count++;
+            free(pathImage);
         }
     }
     closedir(dirp);
@@ -88,7 +95,7 @@ void displayWork(int imageRemaining,int imageNumber){
 }
 
 void start(ImageToModify* imageList, int imageNumber, int threadNumber){
-    //printf("ee %s",imageList[0].name);
+    printf("ee %s",imageList[0].name);
     pthread_t threadList[threadNumber-1];
     pthread_t consumer;
     pthread_attr_t attr;

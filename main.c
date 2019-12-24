@@ -13,14 +13,23 @@ typedef struct imageToModify {
     Image start;
     Image end;
     char * name;
-    int i;
+    int* isTreated;
+    int isWrote;
 }ImageToModify;
 
-struct ThreadArg{
-    struct ImageToModify* structImageToModify;
-    int imageRemaining;
-    int threadWorking;
-};
+typedef struct threadArg{
+    struct ImageToModify * structImageToModify;
+    int* imageFinished;
+    int* threadWorking;
+    pthread_mutex_t mutex;
+}ThreadArg;
+
+typedef struct consumerArg{
+    struct ImageToModify* imageList;
+    int* imageFinished;
+    int imageNumber;
+    pthread_mutex_t mutex;
+}ConsumerArg;
 
 
 int count_images(char* path)
@@ -55,7 +64,6 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
             temp[count].start= testimage;
             temp[count].name= malloc(sizeof(char)*240);
             strcpy(temp[count].name, entry->d_name);
-            temp[count].i=12;
             count++;
             free(pathImage);
         }
@@ -65,10 +73,15 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
 }
 
 
-void* treatment(void* image){
-    ImageToModify *temp = (ImageToModify*) image;
-    printf("ee %s",temp->name);
-    apply_effect(&temp->start, &temp->end);
+void* treatment(void* arg){
+    ThreadArg *threadArg = (ThreadArg*) arg;
+    ImageToModify* image = threadArg->structImageToModify;
+    apply_effect(&image->start, &image->end);
+    //TODO ALOOO?
+    image->isTreated=1;
+    *threadArg->imageFinished = *threadArg->imageFinished +1;
+    *threadArg->threadWorking = *threadArg->threadWorking;
+
 }
 
 int init(ImageToModify** listImage,char* path){
@@ -84,39 +97,93 @@ void arrayToZero(int** array,int size){
     }
 }
 
-void * consumer(){
+void * writeImage(ImageToModify image){
+    char* path = "/home/theo/CLionProjects/ThreadImage/result";
+    char* writeImage = malloc(strlen(path)+1+strlen(image.name)+7);
+    strcpy(writeImage, path);
+    strcat(writeImage, "/");
+    strcat(writeImage, image.name);
+    save_bitmap(image.end, writeImage);
+}
 
+int findImageToWrite(ImageToModify * list , int imageNumber){
+    for(int i = 0 ;i<imageNumber-1;i++){
+        if(*list[i].isTreated == 1 && list[i].isWrote==0  ){
+            return i;
+        }
+    }
+}
+
+void * consumeImage(void * arg){
+    //ConsumerArg *Consumer
+    int count = 0;
+    int imageIndex = 0;
+    ConsumerArg *consumerArgs = (ConsumerArg*) arg;
+    ImageToModify* list = consumerArgs->imageList;
+    ImageToModify image = list[0];
+    writeImage(image);
+    while(count<consumerArgs->imageNumber)
+    {
+        /*while(*consumerArgs->imageFinished == 0) {
+            pthread_cond_wait(&cond,consumerArgs->mutex);
+        }*/
+        *consumerArgs->imageFinished = *consumerArgs->imageFinished -1;
+        imageIndex=findImageToWrite(list,consumerArgs->imageNumber);
+        writeImage(list[imageIndex]);
+        list[imageIndex].isWrote = 1;
+        count++;
+    }
 }
 
 
-void displayWork(int imageRemaining,int imageNumber){
-    printf("\rProgress ... %d / %d ",imageNumber-imageRemaining,imageNumber);
+void displayWork(int imageFinished,int imageNumber){
+    printf("\rProgress ... %d / %d ",imageFinished,imageNumber);
     fflush(stdout);
 }
 
 void start(ImageToModify* imageList, int imageNumber, int threadNumber){
-    printf("ee %s",imageList[0].name);
-    pthread_t threadList[threadNumber-1];
+    int imageFinished = 0;
+    int threadWorking=0;
+    int imageSent=0;
+    int imageRemaining = imageNumber;
+    pthread_t threadList[imageNumber];
     pthread_t consumer;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    int threadWorking[threadNumber];
-    arrayToZero(&threadWorking,threadNumber);
-    int imageSent=0;
-    pthread_create(&threadList[0], NULL, treatment, (void *)(imageList+imageSent));
-    pthread_join(threadList[0],NULL);
-    /*while(GLOBAL_IMAGE_REMAINING>0){
-        usleep(200);
-        //displayWork(GLOBAL_IMAGE_REMAINING,imageNumber);
-        for(int i =0;i<threadNumber;i++){
-            if(threadWorking[i]==0){
-                pthread_create(&threadList[i], &attr, treatment, &imageList[imageSent]);
+    pthread_mutex_t mutex =  PTHREAD_MUTEX_INITIALIZER ;
+    //arrayToZero(&threadWorking,threadNumber);
+    ThreadArg tArgs;
+    tArgs.structImageToModify = &imageList[0];
+    tArgs.imageFinished = &imageFinished;
+    tArgs.threadWorking = &threadWorking;
+    tArgs.mutex = mutex;
 
-                imageSent++;
-                threadWorking[i]=1;
-            }
+    ConsumerArg cArgs;
+    cArgs.mutex = mutex;
+    cArgs.imageFinished = &imageFinished;
+    cArgs.imageList = imageList;
+    cArgs.imageNumber = imageNumber;
+
+
+    //pthread_create(&threadList[0], NULL, treatment, (void *)&tArgs);
+    //pthread_join(threadList[0],NULL);
+    //pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
+
+
+   while(imageSent<imageNumber){
+        displayWork(imageFinished,imageNumber);
+        while(threadWorking<threadNumber-1 && imageSent<imageNumber) {
+            ThreadArg tArgs;
+            tArgs.structImageToModify = &imageList[imageSent];
+            tArgs.imageFinished = &imageFinished;
+            tArgs.threadWorking = &threadWorking;
+
+            threadWorking++;
+            pthread_create(&threadList[imageSent], &attr, treatment, (void *)&tArgs);
+            pthread_join(threadList[imageSent],NULL);
+            imageSent++;
         }
-    }*/
+    }
 }
 
 

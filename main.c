@@ -8,7 +8,8 @@
 #include "example/edge-detect.c"
 // ARG DIRECTORYNAME THREAD NUMBER
 
-int GLOBAL_IMAGE_REMAINING;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER; /* Création de la condition */
+pthread_mutex_t mutex =  PTHREAD_MUTEX_INITIALIZER ;
 typedef struct imageToModify {
     Image start;
     Image end;
@@ -22,6 +23,7 @@ typedef struct threadArg{
     int* imageFinished;
     int* threadWorking;
     pthread_mutex_t mutex;
+    pthread_cond_t condFinish;
 }ThreadArg;
 
 typedef struct consumerArg{
@@ -29,6 +31,7 @@ typedef struct consumerArg{
     int* imageFinished;
     int imageNumber;
     pthread_mutex_t mutex;
+    pthread_cond_t condFinish;
 }ConsumerArg;
 
 
@@ -79,14 +82,16 @@ void* treatment(void* arg){
     apply_effect(&image->start, &image->end);
     //TODO ALOOO?
     image->isTreated=1;
+    pthread_mutex_lock(&threadArg->mutex);
+    pthread_cond_signal(&condition);
     *threadArg->imageFinished = *threadArg->imageFinished +1;
-    *threadArg->threadWorking = *threadArg->threadWorking;
-
+    *threadArg->threadWorking = *threadArg->threadWorking -1;
+    pthread_mutex_unlock(&threadArg->mutex);
+    printf("FINISHHH");
 }
 
 int init(ImageToModify** listImage,char* path){
     int count = count_images(path);
-    GLOBAL_IMAGE_REMAINING = count;
     getListImage(path,count,listImage);
     return count ;
 }
@@ -124,9 +129,12 @@ void * consumeImage(void * arg){
     writeImage(image);
     while(count<consumerArgs->imageNumber)
     {
-        /*while(*consumerArgs->imageFinished == 0) {
-            pthread_cond_wait(&cond,consumerArgs->mutex);
-        }*/
+        pthread_mutex_lock(&consumerArgs->mutex);
+        printf("%d",*consumerArgs->imageFinished);
+        while(*consumerArgs->imageFinished == 0) {
+            printf("%d",*consumerArgs->imageFinished);
+        }
+        pthread_mutex_lock(&consumerArgs->mutex);
         *consumerArgs->imageFinished = *consumerArgs->imageFinished -1;
         imageIndex=findImageToWrite(list,consumerArgs->imageNumber);
         writeImage(list[imageIndex]);
@@ -150,7 +158,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     pthread_t consumer;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_mutex_t mutex =  PTHREAD_MUTEX_INITIALIZER ;
+
     //arrayToZero(&threadWorking,threadNumber);
     ThreadArg tArgs;
     tArgs.structImageToModify = &imageList[0];
@@ -162,13 +170,15 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     cArgs.mutex = mutex;
     cArgs.imageFinished = &imageFinished;
     cArgs.imageList = imageList;
-    cArgs.imageNumber = imageNumber;
+    cArgs.imageNumber= imageNumber;
+    pthread_cond_init(&cArgs.condFinish, NULL);
+
 
 
     //pthread_create(&threadList[0], NULL, treatment, (void *)&tArgs);
     //pthread_join(threadList[0],NULL);
     //pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
-
+   // pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
 
    while(imageSent<imageNumber){
         displayWork(imageFinished,imageNumber);
@@ -177,13 +187,16 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
             tArgs.structImageToModify = &imageList[imageSent];
             tArgs.imageFinished = &imageFinished;
             tArgs.threadWorking = &threadWorking;
-
+            tArgs.condFinish = cArgs.condFinish;
             threadWorking++;
-            pthread_create(&threadList[imageSent], &attr, treatment, (void *)&tArgs);
-            pthread_join(threadList[imageSent],NULL);
+            pthread_create(&threadList[imageSent],NULL, treatment, (void *)&tArgs);
             imageSent++;
         }
     }
+    pthread_join(threadList[0],NULL);
+
+
+    printf("%d",imageFinished);
 }
 
 

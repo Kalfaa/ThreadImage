@@ -28,6 +28,7 @@ typedef struct threadArg{
 }ThreadArg;
 
 typedef struct consumerArg{
+    int*  imageWrited;
     struct ImageToModify* imageList;
     int* imageFinished;
     int imageNumber;
@@ -123,7 +124,6 @@ int findImageToWrite(ImageToModify * list , int imageNumber){
 }
 
 void * consumeImage(void * arg){
-    //ConsumerArg *Consumer
     int count = 0;
     int imageIndex = 0;
     ConsumerArg *consumerArgs = (ConsumerArg*) arg;
@@ -139,12 +139,13 @@ void * consumeImage(void * arg){
         writeImage(list[imageIndex]);
         list[imageIndex].isWrote = 1;
         count++;
+        *consumerArgs->imageWrited = *consumerArgs->imageWrited +1;
     }
 }
 
 
-void displayWork(int imageFinished,int imageNumber){
-    printf("\rProgress ... %d / %d ",imageFinished,imageNumber);
+void displayWork(int imageFinished,int imageWrited , int imageNumber){
+    printf("\rApply effect  ... %d / %d  Writting Images ... %d / %d",imageFinished,imageNumber,imageWrited,imageNumber);
     fflush(stdout);
 }
 
@@ -154,6 +155,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     int imageSent=0;
     int effectApplied =0;
     int imageRemaining = imageNumber;
+    int imageWrited = 0;
     pthread_t threadList[imageNumber];
     pthread_t consumer;
     pthread_attr_t attr;
@@ -166,6 +168,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     cArgs.imageFinished = &imageFinished;
     cArgs.imageList = imageList;
     cArgs.imageNumber= imageNumber;
+    cArgs.imageWrited = &imageWrited;
     pthread_cond_init(&cArgs.condFinish, NULL);
 
 
@@ -175,10 +178,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
 
    while(imageSent<imageNumber){
-       //displayWork(effectApplied,imageNumber);
-       printf("%d",effectApplied);
         while(threadWorking<threadNumber-1 && imageSent<imageNumber) {
-            //displayWork(effectApplied,imageNumber);
             ThreadArg tArgs;
             tArgs.structImageToModify = &imageList[imageSent];
             tArgs.imageFinished = &imageFinished;
@@ -190,11 +190,14 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
             imageSent++;
         }
     }
-   while()
-    //pthread_join(consumer,NULL);
+   while(imageWrited<imageNumber){
+       displayWork(effectApplied,imageWrited,imageNumber);
+   }
+    pthread_join(consumer,NULL);
+    displayWork(effectApplied,imageWrited,imageNumber);
 
 
-    printf("%d",effectApplied);
+    printf("Done ! ");
 }
 
 

@@ -84,12 +84,13 @@ void* treatment(void* arg){
     ThreadArg *threadArg = (ThreadArg*) arg;
     ImageToModify* image = threadArg->structImageToModify;
     apply_effect(&image->start, &image->end,EDGE);
-    image->isTreated=1;
     pthread_mutex_lock(&threadArg->mutex);
-    pthread_cond_signal(&condition);
+    image->isTreated=1;
+    printf("%s",image->name);
     *threadArg->imageFinished = *threadArg->imageFinished +1;
     *threadArg->threadWorking = *threadArg->threadWorking -1;
     *threadArg->display = *threadArg->display +1;
+    pthread_cond_signal(&condition);
     pthread_mutex_unlock(&threadArg->mutex);
 }
 
@@ -116,11 +117,13 @@ void * writeImage(ImageToModify image){
 }
 
 int findImageToWrite(ImageToModify * list , int imageNumber){
-    for(int i = 0 ;i<imageNumber-1;i++){
-        if(list[i].isTreated == 1 && list[i].isWrote==0  ){
+    for(int i = 0 ;i<=imageNumber-1;i++){
+        ImageToModify image = list[i];
+        if(image.isTreated == 1 && image.isWrote==0  ){
             return i;
         }
     }
+    return 0;
 }
 
 void * consumeImage(void * arg){
@@ -128,7 +131,6 @@ void * consumeImage(void * arg){
     int imageIndex = 0;
     ConsumerArg *consumerArgs = (ConsumerArg*) arg;
     ImageToModify* list = consumerArgs->imageList;
-    ImageToModify image = list[1];
     while(count<consumerArgs->imageNumber)
     {
         while(*consumerArgs->imageTreated == 0) {
@@ -139,7 +141,7 @@ void * consumeImage(void * arg){
         list[imageIndex].isWrote = 1;
         count++;
         pthread_mutex_lock(&consumerArgs->mutex);
-        *consumerArgs->imageTreated = *consumerArgs->imageTreated - 1;
+        *consumerArgs->imageTreated = *consumerArgs->imageTreated-1;
         *consumerArgs->imageWrited = *consumerArgs->imageWrited +1;
         pthread_mutex_unlock(&consumerArgs->mutex);
     }
@@ -156,7 +158,6 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     int threadWorking=0;
     int imageSent=0;
     int effectApplied =0;
-    int imageRemaining = imageNumber;
     int imageWrited = 0;
     pthread_t threadList[imageNumber];
     pthread_t consumer;
@@ -172,23 +173,34 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     pthread_cond_init(&cArgs.condFinish, NULL);
     pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
 
+    /*  ThreadArg threadArg[imageNumber];
+    for(int z =0; z<imageNumber;z++){
+        threadArg[z].structImageToModify = &imageList[z];
+        threadArg[z].imageFinished = &imageFinished;
+        threadArg[z].threadWorking = &threadWorking;
+        threadArg[z].condFinish = cArgs.condFinish;
+        threadArg[z].display=&effectApplied;
+    }
+     */
    while(imageSent<imageNumber){
         while(threadWorking<threadNumber-1 && imageSent<imageNumber) {
-            ThreadArg tArgs;
-            tArgs.structImageToModify = &imageList[imageSent];
-            tArgs.imageFinished = &imageFinished;
-            tArgs.threadWorking = &threadWorking;
-            tArgs.condFinish = cArgs.condFinish;
-            tArgs.display=&effectApplied;
+            ThreadArg tArgs ={
+                    .structImageToModify = &imageList[imageSent],
+                    .imageFinished = &imageFinished,
+                    .threadWorking = &threadWorking,
+                    .condFinish = cArgs.condFinish,
+                    .display=&effectApplied
+            };
             threadWorking++;
             pthread_create(&threadList[imageSent],NULL, treatment, (void *)&tArgs);
+            sleep(1);
             imageSent++;
         }
     }
    while(imageWrited<imageNumber){
-       displayWork(effectApplied,imageWrited,imageNumber);
+       //displayWork(effectApplied,imageWrited,imageNumber);
    }
-  displayWork(effectApplied,imageWrited,imageNumber);
+  //displayWork(effectApplied,imageWrited,imageNumber);
 }
 
 

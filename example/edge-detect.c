@@ -13,9 +13,22 @@
 #define LENGHT DIM
 #define OFFSET DIM /2
 
-const float KERNEL[DIM][DIM] = {{-1, -1,-1},
+const float KERNELEDGE[DIM][DIM] = {{-1, -1,-1},
 							   {-1,8,-1},
 							   {-1,-1,-1}};
+
+const float KERNELBOXBLUR[DIM][DIM] = {{-1, -1,-1},
+                                {-1,8,-1},
+                                {-1,-1,-1}};
+const float KERNELSHARPEN[DIM][DIM] = {{-1, -1,-1},
+                                {-1,8,-1},
+                                {-1,-1,-1}};
+
+enum EffectType {
+   EDGE,
+   BOXBLUR,
+   SHARPEN
+};
 
 typedef struct Color_t {
 	float Red;
@@ -24,9 +37,19 @@ typedef struct Color_t {
 } Color_e;
 
 
-void apply_effect(Image* original, Image* new_i);
-void apply_effect(Image* original, Image* new_i) {
-
+void apply_effect(Image* original, Image* new_i, enum EffectType type);
+void apply_effect(Image* original, Image* new_i,enum EffectType type) {
+    float KERNEL[DIM][DIM] ;
+    switch(type){
+        case SHARPEN:
+            memcpy(KERNEL, KERNELSHARPEN, sizeof(KERNEL));
+        case BOXBLUR:
+            memcpy(KERNEL, KERNELBOXBLUR, sizeof(KERNEL));
+        case EDGE:
+            memcpy(KERNEL, KERNELBOXBLUR, sizeof(KERNEL));
+        default:
+            break;
+    }
 	int w = original->bmp_header.width;
 	int h = original->bmp_header.height;
 

@@ -19,7 +19,7 @@ typedef struct imageToModify {
 }ImageToModify;
 
 typedef struct threadArg{
-    struct ImageToModify * structImageToModify;
+    ImageToModify * structImageToModify;
     int* imageFinished;
     int* threadWorking;
     pthread_mutex_t mutex;
@@ -29,7 +29,7 @@ typedef struct threadArg{
 
 typedef struct consumerArg{
     int*  imageWrited;
-    struct ImageToModify* imageList;
+    ImageToModify* imageList;
     int* imageTreated;
     int imageNumber;
     pthread_mutex_t mutex;
@@ -83,7 +83,7 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
 void* treatment(void* arg){
     ThreadArg *threadArg = (ThreadArg*) arg;
     ImageToModify* image = threadArg->structImageToModify;
-    apply_effect(&image->start, &image->end);
+    apply_effect(&image->start, &image->end,EDGE);
     image->isTreated=1;
     pthread_mutex_lock(&threadArg->mutex);
     pthread_cond_signal(&condition);
@@ -162,7 +162,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     pthread_t consumer;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    //printf("1 - %s %p  2 - %s %p 3 - %s %p",imageList[0].name,imageList[0].isTreated,imageList[1].name,imageList[1].isTreated ,imageList[2].name,imageList[2].isTreated);
+
     ConsumerArg cArgs;
     cArgs.mutex = mutex;
     cArgs.imageTreated   = &imageFinished;

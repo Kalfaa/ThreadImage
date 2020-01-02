@@ -14,7 +14,7 @@ typedef struct imageToModify {
     Image start;
     Image end;
     char * name;
-    int* isTreated;
+    int isTreated;
     int isWrote;
 }ImageToModify;
 
@@ -30,7 +30,7 @@ typedef struct threadArg{
 typedef struct consumerArg{
     int*  imageWrited;
     struct ImageToModify* imageList;
-    int* imageFinished;
+    int* imageTreated;
     int imageNumber;
     pthread_mutex_t mutex;
     pthread_cond_t condFinish;
@@ -69,7 +69,7 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
             Image testimage = open_bitmap(pathImage);
             temp[count].start= testimage;
             temp[count].name= malloc(sizeof(char)*240);
-            temp[count].isTreated = &isTreated;
+            temp[count].isTreated = isTreated;
             strcpy(temp[count].name, entry->d_name);
             count++;
             free(pathImage);
@@ -84,8 +84,7 @@ void* treatment(void* arg){
     ThreadArg *threadArg = (ThreadArg*) arg;
     ImageToModify* image = threadArg->structImageToModify;
     apply_effect(&image->start, &image->end);
-    //TODO ALOOO?
-    *image->isTreated=1;
+    image->isTreated=1;
     pthread_mutex_lock(&threadArg->mutex);
     pthread_cond_signal(&condition);
     *threadArg->imageFinished = *threadArg->imageFinished +1;
@@ -112,12 +111,13 @@ void * writeImage(ImageToModify image){
     strcpy(writeImage, path);
     strcat(writeImage, "/");
     strcat(writeImage, image.name);
+    //printf("%s %p \n",image.name,image.end.palette);
     save_bitmap(image.end, writeImage);
 }
 
 int findImageToWrite(ImageToModify * list , int imageNumber){
     for(int i = 0 ;i<imageNumber-1;i++){
-        if(*list[i].isTreated == 1 && list[i].isWrote==0  ){
+        if(list[i].isTreated == 1 && list[i].isWrote==0  ){
             return i;
         }
     }
@@ -131,15 +131,17 @@ void * consumeImage(void * arg){
     ImageToModify image = list[1];
     while(count<consumerArgs->imageNumber)
     {
-        while(*consumerArgs->imageFinished == 0) {
-            pthread_cond_wait(&condition,&consumerArgs->mutex);
+        while(*consumerArgs->imageTreated == 0) {
+            //pthread_cond_wait(&condition,&consumerArgs->mutex);
         }
-        *consumerArgs->imageFinished = *consumerArgs->imageFinished -1;
         imageIndex=findImageToWrite(list,consumerArgs->imageNumber);
         writeImage(list[imageIndex]);
         list[imageIndex].isWrote = 1;
         count++;
+        pthread_mutex_lock(&consumerArgs->mutex);
+        *consumerArgs->imageTreated = *consumerArgs->imageTreated - 1;
         *consumerArgs->imageWrited = *consumerArgs->imageWrited +1;
+        pthread_mutex_unlock(&consumerArgs->mutex);
     }
 }
 
@@ -160,21 +162,14 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     pthread_t consumer;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    printf("%s",imageList[1].name);
-    //arrayToZero(&threadWorking,threadNumber);
-
+    //printf("1 - %s %p  2 - %s %p 3 - %s %p",imageList[0].name,imageList[0].isTreated,imageList[1].name,imageList[1].isTreated ,imageList[2].name,imageList[2].isTreated);
     ConsumerArg cArgs;
     cArgs.mutex = mutex;
-    cArgs.imageFinished = &imageFinished;
+    cArgs.imageTreated   = &imageFinished;
     cArgs.imageList = imageList;
     cArgs.imageNumber= imageNumber;
     cArgs.imageWrited = &imageWrited;
     pthread_cond_init(&cArgs.condFinish, NULL);
-
-
-    //pthread_create(&threadList[0], NULL, treatment, (void *)&tArgs);
-    //pthread_join(threadList[0],NULL);
-    //pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
     pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
 
    while(imageSent<imageNumber){
@@ -193,11 +188,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
    while(imageWrited<imageNumber){
        displayWork(effectApplied,imageWrited,imageNumber);
    }
-    pthread_join(consumer,NULL);
-    displayWork(effectApplied,imageWrited,imageNumber);
-
-
-    printf("Done ! ");
+  displayWork(effectApplied,imageWrited,imageNumber);
 }
 
 

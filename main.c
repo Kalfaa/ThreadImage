@@ -198,16 +198,27 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber,char * ou
   displayWork(effectApplied,imageWrited,imageNumber);
 }
 
+int checkEffectArgument(char * effect){
+    if(effect) {
+        if (strcmp(effect, "sharpen") || strcmp(effect, "edge-detect") || strcmp(effect, "boxblur")) {
+            return 1;
+        }
+    }
+    return 0;
+}
 // in out effect
 int main(int argc, char** argv)
 {
-    printf("%s\n" ,argv[1]);
-    printf("%s" ,argv[2]);
-    ImageToModify* listImage;
-    printf("Init...");
-    int imageNumber = init(&listImage,argv[1]);
-    printf("%d",imageNumber);
-    start(listImage, imageNumber, 8,argv[2]);
+    int checkEffect = checkEffectArgument(argv[3]);
+    if(checkEffect==1) {
+        ImageToModify *listImage;
+        printf("Init...");
+        int imageNumber = init(&listImage, argv[1]);
+        printf("%d", imageNumber);
+        start(listImage, imageNumber, 8, argv[2]);
+    }else{
+        printf("Enter effect : sharpen edge-detect boxblur ");
+    }
     return 0;
 }
 

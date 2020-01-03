@@ -17,12 +17,12 @@ const float KERNELEDGE[DIM][DIM] = {{-1, -1,-1},
 							   {-1,8,-1},
 							   {-1,-1,-1}};
 
-const float KERNELBOXBLUR[DIM][DIM] = {{-1, -1,-1},
-                                {-1,8,-1},
-                                {-1,-1,-1}};
-const float KERNELSHARPEN[DIM][DIM] = {{-1, -1,-1},
-                                {-1,8,-1},
-                                {-1,-1,-1}};
+const float KERNELBOXBLUR[DIM][DIM] = {{1,1,1},
+                                       {1,1,1},
+                                       {1,1,1}};
+const float KERNELSHARPEN[DIM][DIM] = {{0, -1,0},
+                                       {-1,5,-1},
+                                       {0,-1,0}};
 
 enum EffectType {
    EDGE,
@@ -46,7 +46,7 @@ void apply_effect(Image* original, Image* new_i,enum EffectType type) {
         case BOXBLUR:
             memcpy(KERNEL, KERNELBOXBLUR, sizeof(KERNEL));
         case EDGE:
-            memcpy(KERNEL, KERNELBOXBLUR, sizeof(KERNEL));
+            memcpy(KERNEL, KERNELEDGE, sizeof(KERNEL));
         default:
             break;
     }

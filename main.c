@@ -34,6 +34,7 @@ typedef struct consumerArg{
     int imageNumber;
     pthread_mutex_t mutex;
     pthread_cond_t condFinish;
+    char * out ;
 }ConsumerArg;
 
 
@@ -92,9 +93,11 @@ void* treatment(void* arg){
     *threadArg->display = *threadArg->display +1;
     pthread_cond_signal(&condition);
     pthread_mutex_unlock(&threadArg->mutex);
+    printf("Treated");
 }
 
 int init(ImageToModify** listImage,char* path){
+
     int count = count_images(path);
     getListImage(path,count,listImage);
     return count ;
@@ -106,10 +109,9 @@ void arrayToZero(int** array,int size){
     }
 }
 
-void * writeImage(ImageToModify image){
-    char* path = "/home/theo/CLionProjects/ThreadImage/result";
-    char* writeImage = malloc(strlen(path)+1+strlen(image.name)+7);
-    strcpy(writeImage, path);
+void * writeImage(ImageToModify image,char * out){
+    char* writeImage = malloc(strlen(out)+1+strlen(image.name)+7);
+    strcpy(writeImage, out);
     strcat(writeImage, "/");
     strcat(writeImage, image.name);
     //printf("%s %p \n",image.name,image.end.palette);
@@ -137,7 +139,7 @@ void * consumeImage(void * arg){
             //pthread_cond_wait(&condition,&consumerArgs->mutex);
         }
         imageIndex=findImageToWrite(list,consumerArgs->imageNumber);
-        writeImage(list[imageIndex]);
+        writeImage(list[imageIndex],consumerArgs->out);
         list[imageIndex].isWrote = 1;
         count++;
         pthread_mutex_lock(&consumerArgs->mutex);
@@ -153,7 +155,7 @@ void displayWork(int imageFinished,int imageWrited , int imageNumber){
     fflush(stdout);
 }
 
-void start(ImageToModify* imageList, int imageNumber, int threadNumber){
+void start(ImageToModify* imageList, int imageNumber, int threadNumber,char * out){
     int imageFinished = 0;
     int threadWorking=0;
     int imageSent=0;
@@ -170,10 +172,11 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
     cArgs.imageList = imageList;
     cArgs.imageNumber= imageNumber;
     cArgs.imageWrited = &imageWrited;
+    cArgs.out = out;
     pthread_cond_init(&cArgs.condFinish, NULL);
-    pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
 
-    /*  ThreadArg threadArg[imageNumber];
+    ThreadArg* threadArg = malloc(sizeof(ThreadArg) * imageNumber);
+
     for(int z =0; z<imageNumber;z++){
         threadArg[z].structImageToModify = &imageList[z];
         threadArg[z].imageFinished = &imageFinished;
@@ -181,37 +184,30 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber){
         threadArg[z].condFinish = cArgs.condFinish;
         threadArg[z].display=&effectApplied;
     }
-     */
+    pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
    while(imageSent<imageNumber){
         while(threadWorking<threadNumber-1 && imageSent<imageNumber) {
-            ThreadArg tArgs ={
-                    .structImageToModify = &imageList[imageSent],
-                    .imageFinished = &imageFinished,
-                    .threadWorking = &threadWorking,
-                    .condFinish = cArgs.condFinish,
-                    .display=&effectApplied
-            };
             threadWorking++;
-            pthread_create(&threadList[imageSent],NULL, treatment, (void *)&tArgs);
-            sleep(1);
+            pthread_create(&threadList[imageSent],NULL, treatment, (void *)&threadArg[imageSent]);
             imageSent++;
         }
     }
-   while(imageWrited<imageNumber){
-       //displayWork(effectApplied,imageWrited,imageNumber);
-   }
-  //displayWork(effectApplied,imageWrited,imageNumber);
+    while(imageWrited<imageNumber){
+        displayWork(effectApplied,imageWrited,imageNumber);
+    }
+  displayWork(effectApplied,imageWrited,imageNumber);
 }
 
-
-
+// in out effect
 int main(int argc, char** argv)
 {
-    char* path = "/home/theo/CLionProjects/ThreadImage/TestBitmap";
+    printf("%s\n" ,argv[1]);
+    printf("%s" ,argv[2]);
     ImageToModify* listImage;
     printf("Init...");
-    int imageNumber = init(&listImage,path);
-    start(listImage, imageNumber, 8);
+    int imageNumber = init(&listImage,argv[1]);
+    printf("%d",imageNumber);
+    start(listImage, imageNumber, 8,argv[2]);
     return 0;
 }
 

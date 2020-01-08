@@ -25,6 +25,7 @@ typedef struct threadArg{
     pthread_mutex_t mutex;
     int * display;
     pthread_cond_t condFinish;
+    enum EffectType effectType;
 }ThreadArg;
 
 typedef struct consumerArg{
@@ -84,7 +85,7 @@ void getListImage(char* path ,int imageNumber,ImageToModify** imageToModify){
 void* treatment(void* arg){
     ThreadArg *threadArg = (ThreadArg*) arg;
     ImageToModify* image = threadArg->structImageToModify;
-    apply_effect(&image->start, &image->end,EDGE);
+    apply_effect(&image->start, &image->end,threadArg->effectType);
     pthread_mutex_lock(&threadArg->mutex);
     image->isTreated=1;
     printf("%s",image->name);
@@ -155,7 +156,22 @@ void displayWork(int imageFinished,int imageWrited , int imageNumber){
     fflush(stdout);
 }
 
-void start(ImageToModify* imageList, int imageNumber, int threadNumber,char * out){
+enum EffectType stringToEffectType(char * effect){
+    if(effect) {
+        if (strcmp(effect, "sharpen")==0){
+            return SHARPEN;
+        }
+        if(strcmp(effect, "edge-detect")==0){
+            return EDGE;
+        }
+        if(strcmp(effect, "boxblur")==0) {
+            return BOXBLUR;
+        }
+    }
+    return EDGE;
+}
+
+void start(ImageToModify* imageList, int imageNumber, int threadNumber,char * out,char* effect){
     int imageFinished = 0;
     int threadWorking=0;
     int imageSent=0;
@@ -183,6 +199,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber,char * ou
         threadArg[z].threadWorking = &threadWorking;
         threadArg[z].condFinish = cArgs.condFinish;
         threadArg[z].display=&effectApplied;
+        threadArg[z].effectType = stringToEffectType(effect);
     }
     pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);
    while(imageSent<imageNumber){
@@ -206,6 +223,7 @@ int checkEffectArgument(char * effect){
     }
     return 0;
 }
+
 // in out effect
 int main(int argc, char** argv)
 {
@@ -215,7 +233,7 @@ int main(int argc, char** argv)
         printf("Init...");
         int imageNumber = init(&listImage, argv[1]);
         printf("%d", imageNumber);
-        start(listImage, imageNumber, 8, argv[2]);
+        start(listImage, imageNumber, 8, argv[2],argv[3]);
     }else{
         printf("Enter effect : sharpen edge-detect boxblur ");
     }

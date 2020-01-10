@@ -89,10 +89,9 @@ void* treatment(void* arg){
     pthread_mutex_lock(&threadArg->mutex);
     image->isTreated=1;
     printf("%s",image->name);
-    *threadArg->imageFinished = *threadArg->imageFinished +1;
     *threadArg->threadWorking = *threadArg->threadWorking -1;
     *threadArg->display = *threadArg->display +1;
-    pthread_cond_signal(&condition);
+    *threadArg->imageFinished = *threadArg->imageFinished +1;
     pthread_mutex_unlock(&threadArg->mutex);
     printf("Treated");
 }
@@ -199,6 +198,7 @@ void start(ImageToModify* imageList, int imageNumber, int threadNumber,char * ou
         threadArg[z].threadWorking = &threadWorking;
         threadArg[z].condFinish = cArgs.condFinish;
         threadArg[z].display=&effectApplied;
+        threadArg[z].mutex=mutex;
         threadArg[z].effectType = stringToEffectType(effect);
     }
     pthread_create(&consumer, NULL, consumeImage, (void *)&cArgs);

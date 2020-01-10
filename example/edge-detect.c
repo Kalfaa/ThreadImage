@@ -17,9 +17,9 @@ const float KERNELEDGE[DIM][DIM] = {{-1, -1,-1},
 							   {-1,8,-1},
 							   {-1,-1,-1}};
 
-const float KERNELBOXBLUR[DIM][DIM] = {{0.9,0.9,0.9},
-                                       {0.9,0.9,0.9},
-                                       {0.9,0.9,0.9}};
+const float KERNELBOXBLUR[DIM][DIM] = {{0.11,0.11,0.11},
+                                       {0.11,0.11,0.11},
+                                       {0.11,0.11,0.11}};
 const float KERNELSHARPEN[DIM][DIM] = {{0, -1,0},
                                        {-1,5,-1},
                                        {0,-1,0}};

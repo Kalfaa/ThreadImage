@@ -24,6 +24,8 @@ const float KERNELSHARPEN[DIM][DIM] = {{0, -1,0},
                                        {-1,5,-1},
                                        {0,-1,0}};
 
+float KERNEL[DIM][DIM] ;
+
 enum EffectType {
    EDGE,
    BOXBLUR,
@@ -36,10 +38,20 @@ typedef struct Color_t {
 	float Blue;
 } Color_e;
 
+void inline apply_convolution(Color_e* c, int a, int b, int x, int y, Image* img) __attribute__((always_inline));
+void apply_convolution(Color_e* restrict c, int a, int b, int x, int y, Image* restrict img) {
+    int xn = x + a - OFFSET;
+    int yn = y + b - OFFSET;
+
+    Pixel* p = &img->pixel_data[yn][xn];
+
+    c->Red += ((float) p->r) * KERNEL[a][b];
+    c->Green += ((float) p->g) * KERNEL[a][b];
+    c->Blue += ((float) p->b) * KERNEL[a][b];
+}
 
 void apply_effect(Image* original, Image* new_i, enum EffectType type);
-void apply_effect(Image* original, Image* new_i,enum EffectType type) {
-    float KERNEL[DIM][DIM] ;
+void apply_effect(Image* original, Image* new_i, enum EffectType type) {
     switch(type){
         case SHARPEN:
             memcpy(KERNEL, KERNELSHARPEN, sizeof(KERNEL));
@@ -53,41 +65,34 @@ void apply_effect(Image* original, Image* new_i,enum EffectType type) {
         default:
             break;
     }
-	int w = original->bmp_header.width;
-	int h = original->bmp_header.height;
+    int w = original->bmp_header.width;
+    int h = original->bmp_header.height;
 
-	*new_i = new_image(w, h, original->bmp_header.bit_per_pixel, original->bmp_header.color_planes);
+    *new_i = new_image(w, h, original->bmp_header.bit_per_pixel, original->bmp_header.color_planes);
 
-	for (int y = OFFSET; y < h - OFFSET; y++) {
-		for (int x = OFFSET; x < w - OFFSET; x++) {
-			Color_e c = { .Red = 0, .Green = 0, .Blue = 0};
+    for (int y = OFFSET; y < h - OFFSET; y++) {
+        for (int x = OFFSET; x < w - OFFSET; x++) {
+            Color_e c = { .Red = 0, .Green = 0, .Blue = 0};
 
-			for(int a = 0; a < LENGHT; a++){
-				for(int b = 0; b < LENGHT; b++){
-					int xn = x + a - OFFSET;
-					int yn = y + b - OFFSET;
+            apply_convolution(&c, 0, 0, x, y, original);
+            apply_convolution(&c, 0, 1, x, y, original);
+            apply_convolution(&c, 0, 2, x, y, original);
 
-					Pixel* p = &original->pixel_data[yn][xn];
+            apply_convolution(&c, 1, 0, x, y, original);
+            apply_convolution(&c, 1, 1, x, y, original);
+            apply_convolution(&c, 1, 2, x, y, original);
 
-					c.Red += ((float) p->r) * KERNEL[a][b];
-					c.Green += ((float) p->g) * KERNEL[a][b];
-					c.Blue += ((float) p->b) * KERNEL[a][b];
-				}
-			}
+            apply_convolution(&c, 2, 0, x, y, original);
+            apply_convolution(&c, 2, 1, x, y, original);
+            apply_convolution(&c, 2, 2, x, y, original);
 
-			Pixel* dest = &new_i->pixel_data[y][x];
-			dest->r = (uint8_t)  (c.Red <= 0 ? 0 : c.Red >= 255 ? 255 : c.Red);
-			dest->g = (uint8_t) (c.Green <= 0 ? 0 : c.Green >= 255 ? 255 : c.Green);
-			dest->b = (uint8_t) (c.Blue <= 0 ? 0 : c.Blue >= 255 ? 255 : c.Blue);
-		}
-	}
+            Pixel* dest = &new_i->pixel_data[y][x];
+            dest->r = (uint8_t)  (c.Red <= 0 ? 0 : c.Red >= 255 ? 255 : c.Red);
+            dest->g = (uint8_t) (c.Green <= 0 ? 0 : c.Green >= 255 ? 255 : c.Green);
+            dest->b = (uint8_t) (c.Blue <= 0 ? 0 : c.Blue >= 255 ? 255 : c.Blue);
+        }
+    }
+
 }
-/*
-int main(int argc, char** argv) {
 
-	Image img = open_bitmap("bmp_tank.bmp");
-	Image new_i;
-	apply_effect(&img, &new_i);
-	save_bitmap(new_i, "test_out.bmp");
-	return 0;
-}*/
+

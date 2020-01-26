@@ -233,7 +233,7 @@ int main(int argc, char** argv)
         printf("Init...");
         int imageNumber = init(&listImage, argv[1]);
         printf("%d", imageNumber);
-        start(listImage, imageNumber, 8, argv[2],argv[3]);
+        start(listImage, imageNumber, atoi(argv[4]), argv[2],argv[3]);
     }else{
         printf("Enter effect : sharpen edge-detect boxblur ");
     }
